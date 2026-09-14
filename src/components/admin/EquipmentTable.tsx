@@ -49,7 +49,11 @@ export function EquipmentTable() {
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    await deleteEquipment(id);
+    try {
+      await deleteEquipment(id);
+    } catch (err: unknown) {
+      console.error('Failed to delete equipment:', err);
+    }
   }
 
   if (loading) return <Spinner />;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useBookings } from '@/hooks/useBookings';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { Room } from '@/types';
@@ -12,7 +12,6 @@ interface BookingFormProps {
 
 export function BookingForm({ room, onSuccess }: BookingFormProps) {
   const { user } = useAuth();
-  const { createBooking } = useBookings();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,14 +39,17 @@ export function BookingForm({ room, onSuccess }: BookingFormProps) {
         throw new Error('End time must be after start time');
       }
 
-      await createBooking({
+      const { error: insertError } = await supabase.from('bookings').insert({
         room_id: room.id,
         user_id: user.id,
         title: formData.title,
-        description: formData.description || undefined,
+        description: formData.description || null,
         start_time: start.toISOString(),
         end_time: end.toISOString(),
+        status: 'confirmed',
       });
+
+      if (insertError) throw insertError;
 
       onSuccess();
     } catch (err: unknown) {

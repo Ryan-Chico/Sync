@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Booking } from '@/types';
+
+let bookingChannelCounter = 0;
 
 export function useBookings(userId?: string, roomId?: string) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelId = useRef(`bookings-realtime-${++bookingChannelCounter}`);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -26,7 +29,7 @@ export function useBookings(userId?: string, roomId?: string) {
     fetchBookings();
 
     const channel = supabase
-      .channel('bookings-realtime')
+      .channel(channelId.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, fetchBookings)
       .subscribe();
 

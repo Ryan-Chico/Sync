@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react';
 import type { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Profile } from '@/types';
@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const fetchedUserId = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) fetchProfile(session.user.id);
       else {
         setProfile(null);
+        fetchedUserId.current = null;
         setLoading(false);
       }
     });
@@ -42,7 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (fetchedUserId.current === userId) return;
+    fetchedUserId.current = userId;
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (error) console.error('Error fetching profile:', error);
     setProfile(data);
     setLoading(false);
   }

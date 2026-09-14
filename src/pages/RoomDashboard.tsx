@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { useRooms } from '@/hooks/useRooms';
-import { useRoomIssuesStatus, useIssues } from '@/hooks/useIssues';
+import { useRoomIssuesStatus } from '@/hooks/useIssues';
 import { RoomStatusCard } from '@/components/rooms/RoomStatusCard';
 import { QuickFilterBar } from '@/components/rooms/QuickFilterBar';
 import { ReportIssueModal } from '@/components/rooms/ReportIssueModal';
@@ -16,7 +16,6 @@ export function RoomDashboard() {
   const navigate = useNavigate();
   const { rooms, loading: roomsLoading, refetch } = useRooms();
   const { roomIssueCounts, loading: issuesLoading } = useRoomIssuesStatus();
-  const { issues } = useIssues();
 
   const [search, setSearch] = useState('');
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);

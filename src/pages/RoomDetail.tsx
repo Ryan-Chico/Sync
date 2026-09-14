@@ -9,13 +9,13 @@ import { BookingCard } from '@/components/bookings/BookingCard';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
-import { formatTime, formatDate } from '@/lib/utils';
+import { formatTime } from '@/lib/utils';
 import { useState } from 'react';
 
 export function RoomDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { room, loading: roomLoading } = useRoom(id);
   const { bookings, loading: bookingsLoading, cancelBooking } = useBookings(undefined, id);
   const [showBookingForm, setShowBookingForm] = useState(false);
@@ -122,7 +122,7 @@ export function RoomDetail() {
                 booking={booking}
                 showUser
                 onCancel={
-                  user && (booking.user_id === user.id || user.user_metadata?.role === 'admin')
+                  user && (booking.user_id === user.id || isAdmin)
                     ? cancelBooking
                     : undefined
                 }

@@ -85,7 +85,11 @@ export function ManageRooms() {
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This action cannot be undone.`)) return;
-    await deleteRoom(id);
+    try {
+      await deleteRoom(id);
+    } catch (err: unknown) {
+      console.error('Failed to delete room:', err);
+    }
   }
 
   function toggleEquipment(eq: string) {

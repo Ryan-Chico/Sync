@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { RoomIssue } from '@/types';
+
+let issueChannelCounter = 0;
+let issueCountChannelCounter = 0;
 
 export function useIssues(roomId?: string) {
   const [issues, setIssues] = useState<RoomIssue[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelId = useRef(`issues-realtime-${++issueChannelCounter}`);
 
   const fetchIssues = useCallback(async () => {
     setLoading(true);
@@ -25,7 +29,7 @@ export function useIssues(roomId?: string) {
     fetchIssues();
 
     const channel = supabase
-      .channel('issues-realtime')
+      .channel(channelId.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_issues' }, fetchIssues)
       .subscribe();
 
@@ -70,6 +74,7 @@ export function useIssues(roomId?: string) {
 export function useRoomIssuesStatus() {
   const [roomIssueCounts, setRoomIssueCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const channelId = useRef(`issues-count-realtime-${++issueCountChannelCounter}`);
 
   const fetchIssueCounts = useCallback(async () => {
     setLoading(true);
@@ -94,7 +99,7 @@ export function useRoomIssuesStatus() {
     fetchIssueCounts();
 
     const channel = supabase
-      .channel('issues-count-realtime')
+      .channel(channelId.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_issues' }, fetchIssueCounts)
       .subscribe();
 

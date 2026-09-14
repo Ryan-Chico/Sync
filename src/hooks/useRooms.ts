@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Room, RoomFilter, Booking } from '@/types';
+
+let roomsChannelCounter = 0;
 
 const defaultFilter: RoomFilter = {
   search: '',
@@ -15,6 +17,7 @@ export function useRooms(filter?: Partial<RoomFilter>) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const mergedFilter = { ...defaultFilter, ...filter };
+  const channelId = useRef(`rooms-realtime-${++roomsChannelCounter}`);
 
   const fetchRooms = useCallback(async () => {
     setLoading(true);
@@ -84,7 +87,7 @@ export function useRooms(filter?: Partial<RoomFilter>) {
     fetchRooms();
 
     const channel = supabase
-      .channel('rooms-realtime')
+      .channel(channelId.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, fetchRooms)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, fetchRooms)
       .subscribe();

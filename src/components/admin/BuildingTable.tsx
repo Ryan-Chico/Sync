@@ -49,7 +49,11 @@ export function BuildingTable() {
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    await deleteBuilding(id);
+    try {
+      await deleteBuilding(id);
+    } catch (err: unknown) {
+      console.error('Failed to delete building:', err);
+    }
   }
 
   if (loading) return <Spinner />;

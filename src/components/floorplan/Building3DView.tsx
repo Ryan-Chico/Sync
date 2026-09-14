@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Text, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Text, PerspectiveCamera, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Room } from '@/types';
 
@@ -21,6 +21,28 @@ interface FloorProps {
   onRoomClick: (room: Room) => void;
 }
 
+const MAIN_WING = { width: 6, depth: 4 };
+const SIDE_WING = { width: 2.5, depth: 3 };
+const FLOOR_HEIGHT = 0.1;
+const ROOM_HEIGHT = 0.8;
+const PILLAR_SIZE = 0.12;
+
+// Positions for main wing (centered at origin)
+const MAIN = {
+  left: -MAIN_WING.width / 2,
+  right: MAIN_WING.width / 2,
+  front: -MAIN_WING.depth / 2,
+  back: MAIN_WING.depth / 2,
+};
+
+// Positions for side wing (attached to left-back of main wing)
+const SIDE = {
+  left: -MAIN_WING.width / 2 - SIDE_WING.width / 2,
+  right: -MAIN_WING.width / 2 + SIDE_WING.width / 2,
+  front: MAIN_WING.depth / 2,
+  back: MAIN_WING.depth / 2 + SIDE_WING.depth,
+};
+
 function Room3D({ room, position, size, onClick }: {
   room: Room & { hasIssues?: boolean };
   position: [number, number, number];
@@ -30,15 +52,10 @@ function Room3D({ room, position, size, onClick }: {
   const [hovered, setHovered] = useState(false);
 
   const color = useMemo(() => {
-    if (room.hasIssues) return '#f59e0b'; // yellow for maintenance
-    if (room.status === 'occupied') return '#ef4444'; // red for occupied
-    return '#22c55e'; // green for available
+    if (room.hasIssues) return '#f59e0b';
+    if (room.status === 'occupied') return '#ef4444';
+    return '#22c55e';
   }, [room.status, room.hasIssues]);
-
-  const emissiveColor = useMemo(() => {
-    if (hovered) return color;
-    return '#000000';
-  }, [hovered, color]);
 
   return (
     <group position={position}>
@@ -49,14 +66,13 @@ function Room3D({ room, position, size, onClick }: {
       >
         <boxGeometry args={size} />
         <meshStandardMaterial
-          color={hovered ? color : color}
-          emissive={emissiveColor}
+          color={color}
+          emissive={hovered ? color : '#000000'}
           emissiveIntensity={hovered ? 0.3 : 0}
           transparent
           opacity={0.85}
         />
       </mesh>
-      {/* Room label */}
       <Text
         position={[0, 0, size[2] / 2 + 0.01]}
         fontSize={0.15}
@@ -73,31 +89,41 @@ function Room3D({ room, position, size, onClick }: {
 }
 
 function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick }: FloorProps) {
-  const floorWidth = 6;
-  const floorDepth = 4;
-  const floorHeight = 1.5;
-
   const sortedRooms = useMemo(() => {
     return [...rooms].sort((a, b) => a.room_number.localeCompare(b.room_number));
   }, [rooms]);
 
-  const roomLayout = useMemo(() => {
-    const count = sortedRooms.length;
-    if (count === 0) return { cols: 1, rows: 1 };
+  const mainWingRooms = useMemo(() => {
+    const halfIndex = Math.ceil(sortedRooms.length * 0.6);
+    return sortedRooms.slice(0, halfIndex);
+  }, [sortedRooms]);
 
-    // Arrange rooms in a grid on the floor
-    const cols = Math.min(count, 3);
-    const rows = Math.ceil(count / cols);
-    return { cols, rows };
+  const sideWingRooms = useMemo(() => {
+    const halfIndex = Math.ceil(sortedRooms.length * 0.6);
+    return sortedRooms.slice(halfIndex);
   }, [sortedRooms]);
 
   const opacity = isSelected ? 1 : isBelowSelected ? 0.6 : 0.3;
 
+  const mainLayout = useMemo(() => {
+    const count = mainWingRooms.length;
+    if (count === 0) return { cols: 1, rows: 1 };
+    const cols = Math.min(count, 3);
+    const rows = Math.ceil(count / cols);
+    return { cols, rows };
+  }, [mainWingRooms]);
+
+  const sideLayout = useMemo(() => {
+    const count = sideWingRooms.length;
+    if (count === 0) return { cols: 1, rows: 1 };
+    return { cols: 1, rows: Math.ceil(count) };
+  }, [sideWingRooms]);
+
   return (
     <group position={[0, floorY, 0]}>
-      {/* Floor slab */}
+      {/* Main wing floor slab */}
       <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[floorWidth, 0.1, floorDepth]} />
+        <boxGeometry args={[MAIN_WING.width, FLOOR_HEIGHT, MAIN_WING.depth]} />
         <meshStandardMaterial
           color={isSelected ? '#3b82f6' : '#6b7280'}
           transparent
@@ -106,44 +132,77 @@ function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick 
         />
       </mesh>
 
-      {/* Floor outline when selected */}
-      {isSelected && (
-        <lineSegments position={[0, 0.06, 0]}>
-          <edgesGeometry args={[new THREE.BoxGeometry(floorWidth, 0.1, floorDepth)]} />
-          <lineBasicMaterial color="#1d4ed8" linewidth={2} />
-        </lineSegments>
-      )}
+      {/* Side wing floor slab */}
+      <mesh position={[(SIDE.left + SIDE.right) / 2, 0, (SIDE.front + SIDE.back) / 2]}>
+        <boxGeometry args={[SIDE_WING.width, FLOOR_HEIGHT, SIDE_WING.depth]} />
+        <meshStandardMaterial
+          color={isSelected ? '#3b82f6' : '#6b7280'}
+          transparent
+          opacity={opacity}
+          wireframe={!isSelected}
+        />
+      </mesh>
 
-      {/* Rooms on this floor */}
-      {sortedRooms.map((room, index) => {
-        const { cols } = roomLayout;
+      {/* Rooms in main wing */}
+      {mainWingRooms.map((room, index) => {
+        const { cols } = mainLayout;
         const col = index % cols;
         const row = Math.floor(index / cols);
 
-        const roomWidth = (floorWidth - 1) / Math.max(cols, 1) - 0.15;
-        const roomDepth = (floorDepth - 1) / Math.max(roomLayout.rows, 1) - 0.15;
-        const roomHeight = 0.8;
+        const roomWidth = (MAIN_WING.width - 1) / Math.max(cols, 1) - 0.15;
+        const roomDepth = (MAIN_WING.depth - 1) / Math.max(mainLayout.rows, 1) - 0.15;
 
-        const x = -floorWidth / 2 + 0.5 + (col + 0.5) * ((floorWidth - 1) / cols);
-        const z = -floorDepth / 2 + 0.5 + (row + 0.5) * ((floorDepth - 1) / roomLayout.rows);
-        const y = 0.1 + roomHeight / 2;
+        const x = -MAIN_WING.width / 2 + 0.5 + (col + 0.5) * ((MAIN_WING.width - 1) / cols);
+        const z = -MAIN_WING.depth / 2 + 0.5 + (row + 0.5) * ((MAIN_WING.depth - 1) / mainLayout.rows);
+        const y = FLOOR_HEIGHT / 2 + ROOM_HEIGHT / 2;
 
         return (
           <Room3D
             key={room.id}
             room={room}
             position={[x, y, z]}
-            size={[roomWidth, roomHeight, roomDepth]}
+            size={[roomWidth, ROOM_HEIGHT, roomDepth]}
             onClick={() => onRoomClick(room)}
           />
         );
       })}
 
-      {/* Pillars at corners */}
-      {[[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([dx, dz], i) => (
-        <mesh key={i} position={[dx * floorWidth / 2, floorHeight / 2, dz * floorDepth / 2]}>
-          <boxGeometry args={[0.1, floorHeight, 0.1]} />
-          <meshStandardMaterial color="#9ca3af" transparent opacity={opacity * 0.8} />
+      {/* Rooms in side wing */}
+      {sideWingRooms.map((room, index) => {
+        const row = index;
+
+        const roomWidth = SIDE_WING.width - 0.5;
+        const roomDepth = (SIDE_WING.depth - 0.5) / Math.max(sideLayout.rows, 1) - 0.1;
+
+        const x = (SIDE.left + SIDE.right) / 2;
+        const z = SIDE.front + 0.25 + (row + 0.5) * ((SIDE_WING.depth - 0.5) / sideLayout.rows);
+        const y = FLOOR_HEIGHT / 2 + ROOM_HEIGHT / 2;
+
+        return (
+          <Room3D
+            key={room.id}
+            room={room}
+            position={[x, y, z]}
+            size={[roomWidth, ROOM_HEIGHT, roomDepth]}
+            onClick={() => onRoomClick(room)}
+          />
+        );
+      })}
+
+      {/* Pillars at all corners */}
+      {[
+        // Main wing corners
+        [MAIN.left, MAIN.front],
+        [MAIN.right, MAIN.front],
+        [MAIN.right, MAIN.back],
+        // Side wing corners
+        [SIDE.left, SIDE.front],
+        [SIDE.left, SIDE.back],
+        [SIDE.right, SIDE.back],
+      ].map(([x, z], i) => (
+        <mesh key={`pillar-${i}`} position={[x, 0.75 + FLOOR_HEIGHT / 2, z]}>
+          <boxGeometry args={[PILLAR_SIZE, 1.5, PILLAR_SIZE]} />
+          <meshStandardMaterial color="#4b5563" transparent opacity={0.9} />
         </mesh>
       ))}
     </group>
@@ -166,37 +225,28 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
   return (
     <div className="relative bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ height: '600px' }}>
       <Canvas shadows style={{ width: '100%', height: '100%' }}>
-        <PerspectiveCamera makeDefault position={[8, 6, 8]} fov={50} />
+        <PerspectiveCamera makeDefault position={[12, 8, 12]} fov={40} />
         <OrbitControls
-          target={[0, buildingHeight / 2, 0]}
+          target={[0, buildingHeight / 2, 1.5]}
           minDistance={5}
-          maxDistance={20}
+          maxDistance={30}
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
           maxPolarAngle={Math.PI / 2.1}
         />
 
-        {/* Lighting */}
         <ambientLight intensity={0.5} />
-        <directionalLight
-          position={[10, 15, 10]}
-          intensity={1}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-        />
+        <directionalLight position={[10, 15, 10]} intensity={1} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
         <pointLight position={[-5, 10, -5]} intensity={0.3} />
 
-        {/* Ground plane */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
           <planeGeometry args={[30, 30]} />
           <meshStandardMaterial color="#1f2937" />
         </mesh>
 
-        {/* Building floors - render from bottom to top */}
         {Array.from({ length: floors }, (_, i) => {
-          const floor = floors - i; // Render top floor last
+          const floor = floors - i;
           const isSelected = floor === selectedFloor;
           const isBelowSelected = floor < selectedFloor;
 
@@ -213,21 +263,31 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
           );
         })}
 
-        {/* Building frame outlines */}
-        {Array.from({ length: floors }, (_, i) => {
-          const floor = i + 1;
-          const floorY = floor * floorSpacing;
-          const isSelected = floor === selectedFloor;
+        {/* Building outline for selected floor */}
+        {(() => {
+          const floorY = selectedFloor * floorSpacing;
+          const outlineHeight = 1.6;
 
-          if (!isSelected) return null;
+          // Create L-shape outline points
+          const points = [
+            new THREE.Vector3(MAIN.left, floorY + outlineHeight / 2, MAIN.front),
+            new THREE.Vector3(MAIN.right, floorY + outlineHeight / 2, MAIN.front),
+            new THREE.Vector3(MAIN.right, floorY + outlineHeight / 2, MAIN.back),
+            new THREE.Vector3(SIDE.right, floorY + outlineHeight / 2, SIDE.front),
+            new THREE.Vector3(SIDE.right, floorY + outlineHeight / 2, SIDE.back),
+            new THREE.Vector3(SIDE.left, floorY + outlineHeight / 2, SIDE.back),
+            new THREE.Vector3(SIDE.left, floorY + outlineHeight / 2, SIDE.front),
+            new THREE.Vector3(MAIN.left, floorY + outlineHeight / 2, MAIN.front),
+          ];
+
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
           return (
-            <lineSegments key={`frame-${floor}`} position={[0, floorY + 0.75, 0]}>
-              <edgesGeometry args={[new THREE.BoxGeometry(6.2, 1.6, 4.2)]} />
+            <lineLoop geometry={geometry}>
               <lineBasicMaterial color="#1d4ed8" linewidth={2} />
-            </lineSegments>
+            </lineLoop>
           );
-        })}
+        })()}
 
         {/* Floor number labels */}
         {Array.from({ length: floors }, (_, i) => {
@@ -236,17 +296,19 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
           const isSelected = floor === selectedFloor;
 
           return (
-            <Text
+            <Billboard
               key={`label-${floor}`}
-              position={[-3.8, floorY + 0.75, 0]}
-              fontSize={0.3}
-              color={isSelected ? '#1d4ed8' : '#6b7280'}
-              anchorX="center"
-              anchorY="middle"
-              rotation={[0, 0, 0]}
+              position={[MAIN.left - 1, floorY + 0.75, 0]}
             >
-              {`F${floor}`}
-            </Text>
+              <Text
+                fontSize={0.3}
+                color={isSelected ? '#1d4ed8' : '#6b7280'}
+                anchorX="center"
+                anchorY="middle"
+              >
+                {`F${floor}`}
+              </Text>
+            </Billboard>
           );
         })}
       </Canvas>
