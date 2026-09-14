@@ -1,4 +1,4 @@
-import { Calendar, Clock, User } from 'lucide-react';
+import { Calendar, Clock, User, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { formatDate, formatTime } from '@/lib/utils';
 import type { Booking } from '@/types';
@@ -6,11 +6,12 @@ import type { Booking } from '@/types';
 interface BookingCardProps {
   booking: Booking;
   onCancel?: (id: string) => void;
+  onEdit?: (booking: Booking) => void;
   showRoom?: boolean;
   showUser?: boolean;
 }
 
-export function BookingCard({ booking, onCancel, showRoom, showUser }: BookingCardProps) {
+export function BookingCard({ booking, onCancel, onEdit, showRoom, showUser }: BookingCardProps) {
   const statusVariant = {
     confirmed: 'success' as const,
     cancelled: 'danger' as const,
@@ -52,14 +53,25 @@ export function BookingCard({ booking, onCancel, showRoom, showUser }: BookingCa
         )}
       </div>
 
-      {booking.status === 'confirmed' && onCancel && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <button
-            onClick={() => onCancel(booking.id)}
-            className="text-sm text-red-600 hover:text-red-800 font-medium"
-          >
-            Cancel Booking
-          </button>
+      {booking.status === 'confirmed' && (onCancel || onEdit) && (
+        <div className="mt-3 pt-3 border-t border-gray-100 flex gap-3">
+          {onEdit && (
+            <button
+              onClick={() => onEdit(booking)}
+              className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </button>
+          )}
+          {onCancel && (
+            <button
+              onClick={() => onCancel(booking.id)}
+              className="text-sm text-red-600 hover:text-red-800 font-medium"
+            >
+              Cancel Booking
+            </button>
+          )}
         </div>
       )}
     </div>

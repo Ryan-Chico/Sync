@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useBookings } from '@/hooks/useBookings';
 import { BookingCard } from '@/components/bookings/BookingCard';
+import { EditBookingModal } from '@/components/bookings/EditBookingModal';
 import { Spinner } from '@/components/ui/Spinner';
 import { Calendar } from 'lucide-react';
+import type { Booking } from '@/types';
 
 export function MyBookings() {
   const { user } = useAuth();
   const { bookings, loading, cancelBooking } = useBookings(user?.id);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
   const activeBookings = bookings.filter((b) => b.status === 'confirmed');
   const pastBookings = bookings.filter((b) => b.status === 'cancelled' || b.status === 'completed');
@@ -37,6 +41,7 @@ export function MyBookings() {
                     booking={booking}
                     showRoom
                     onCancel={cancelBooking}
+                    onEdit={setEditingBooking}
                   />
                 ))}
               </div>
@@ -63,6 +68,13 @@ export function MyBookings() {
           )}
         </>
       )}
+
+      {/* Edit Booking Modal */}
+      <EditBookingModal
+        booking={editingBooking}
+        isOpen={!!editingBooking}
+        onClose={() => setEditingBooking(null)}
+      />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/Spinner';
 
 export function Home() {
   const { user, isAdmin } = useAuth();
-  const { rooms, loading } = useRooms({ status: 'available' });
+  const { rooms, loading } = useRooms();
 
   const totalRooms = rooms.length;
   const availableRooms = rooms.filter((r) => r.status === 'available').length;
@@ -92,19 +92,34 @@ export function Home() {
         <div className="py-12">
           <Spinner size="lg" />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rooms.slice(0, 6).map((room) => (
+      ) : rooms.filter((r) => r.status === 'available').length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+          {rooms.filter((r) => r.status === 'available').slice(0, 6).map((room) => (
             <RoomCard key={room.id} room={room} />
           ))}
         </div>
-      )}
-
-      {!loading && rooms.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+      ) : (
+        <div className="text-center py-8 bg-white rounded-xl border border-gray-200 mb-10">
           <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">No rooms available at the moment</p>
         </div>
+      )}
+
+      {/* Occupied Rooms */}
+      {!loading && rooms.filter((r) => r.status === 'occupied').length > 0 && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Occupied Rooms</h2>
+            <Link to="/rooms" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+              View All →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {rooms.filter((r) => r.status === 'occupied').slice(0, 6).map((room) => (
+              <RoomCard key={room.id} room={room} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

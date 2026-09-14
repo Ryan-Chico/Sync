@@ -60,5 +60,16 @@ export function useBookings(userId?: string, roomId?: string) {
     fetchBookings();
   }
 
-  return { bookings, loading, createBooking, cancelBooking, refetch: fetchBookings };
+  async function updateBooking(id: string, updates: {
+    title?: string;
+    description?: string | null;
+    start_time?: string;
+    end_time?: string;
+  }) {
+    const { error } = await supabase.from('bookings').update(updates).eq('id', id);
+    if (error) throw error;
+    fetchBookings();
+  }
+
+  return { bookings, loading, createBooking, cancelBooking, updateBooking, refetch: fetchBookings };
 }

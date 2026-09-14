@@ -6,11 +6,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { RoomStatusBadge } from '@/components/rooms/RoomStatusBadge';
 import { BookingForm } from '@/components/bookings/BookingForm';
 import { BookingCard } from '@/components/bookings/BookingCard';
+import { EditBookingModal } from '@/components/bookings/EditBookingModal';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatTime } from '@/lib/utils';
 import { useState } from 'react';
+import type { Booking } from '@/types';
 
 export function RoomDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,7 @@ export function RoomDetail() {
   const { room, loading: roomLoading } = useRoom(id);
   const { bookings, loading: bookingsLoading, cancelBooking } = useBookings(undefined, id);
   const [showBookingForm, setShowBookingForm] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
   if (roomLoading) {
     return (
@@ -126,6 +129,11 @@ export function RoomDetail() {
                     ? cancelBooking
                     : undefined
                 }
+                onEdit={
+                  user && (booking.user_id === user.id || isAdmin)
+                    ? setEditingBooking
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -146,6 +154,13 @@ export function RoomDetail() {
           }}
         />
       </Modal>
+
+      {/* Edit Booking Modal */}
+      <EditBookingModal
+        booking={editingBooking}
+        isOpen={!!editingBooking}
+        onClose={() => setEditingBooking(null)}
+      />
     </div>
   );
 }

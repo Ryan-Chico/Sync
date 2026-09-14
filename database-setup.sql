@@ -191,6 +191,33 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Create trigger to prevent booking conflicts
+CREATE OR REPLACE FUNCTION check_booking_conflict()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM bookings
+    WHERE room_id = NEW.room_id
+      AND status = 'confirmed'
+      AND id != NEW.id
+      AND start_time < NEW.end_time
+      AND end_time > NEW.start_time
+  ) THEN
+    RAISE EXCEPTION 'Room is already booked for this time slot';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'prevent_booking_conflict') THEN
+    CREATE TRIGGER prevent_booking_conflict
+      BEFORE INSERT ON bookings
+      FOR EACH ROW EXECUTE FUNCTION check_booking_conflict();
+  END IF;
+END $$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_profiles_updated_at') THEN

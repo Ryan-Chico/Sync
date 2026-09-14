@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
-import { Users, MapPin, Wrench } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Users, MapPin, Wrench, Calendar } from 'lucide-react';
 import { RoomStatusBadge } from './RoomStatusBadge';
 import { formatTime } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 import type { Room } from '@/types';
 
 interface RoomCardProps {
@@ -9,6 +10,19 @@ interface RoomCardProps {
 }
 
 export function RoomCard({ room }: RoomCardProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  function handleBookNow(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      navigate('/login');
+    } else {
+      navigate(`/book/${room.id}`);
+    }
+  }
+
   return (
     <Link
       to={`/rooms/${room.id}`}
@@ -52,8 +66,15 @@ export function RoomCard({ room }: RoomCardProps) {
       )}
 
       {!room.current_booking && room.status === 'available' && (
-        <div className="mt-4 pt-3 border-t border-gray-100">
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
           <p className="text-sm text-green-600 font-medium">Ready to book</p>
+          <button
+            onClick={handleBookNow}
+            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            Book Now
+          </button>
         </div>
       )}
     </Link>

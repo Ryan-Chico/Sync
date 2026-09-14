@@ -54,7 +54,11 @@ export function BookingForm({ room, onSuccess }: BookingFormProps) {
       onSuccess();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create booking';
-      setError(message);
+      if (message.includes('already booked') || message.includes('overlap') || message.includes('conflict')) {
+        setError('This room is already booked for the selected time. Please choose a different time.');
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
