@@ -304,3 +304,5 @@ export function ManageRooms() {
     </div>
   );
 }
+
+export default ManageRooms;

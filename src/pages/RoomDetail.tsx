@@ -164,3 +164,5 @@ export function RoomDetail() {
     </div>
   );
 }
+
+export default RoomDetail;

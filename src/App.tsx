@@ -1,22 +1,23 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Navbar } from '@/components/layout/Navbar';
 import { Spinner } from '@/components/ui/Spinner';
 
-import { Home } from '@/pages/Home';
-import { Rooms } from '@/pages/Rooms';
-import { RoomDetail } from '@/pages/RoomDetail';
-import { BookRoom } from '@/pages/BookRoom';
-import { MyBookings } from '@/pages/MyBookings';
-import { Login } from '@/pages/Login';
-import { Register } from '@/pages/Register';
-import { Dashboard } from '@/pages/admin/Dashboard';
-import { ManageRooms } from '@/pages/admin/ManageRooms';
-import { Settings } from '@/pages/admin/Settings';
-import { Issues } from '@/pages/admin/Issues';
-import { RoomDashboard } from '@/pages/RoomDashboard';
-import { FloorPlan } from '@/pages/FloorPlan';
+const Home = lazy(() => import('@/pages/Home'));
+const Rooms = lazy(() => import('@/pages/Rooms'));
+const RoomDetail = lazy(() => import('@/pages/RoomDetail'));
+const BookRoom = lazy(() => import('@/pages/BookRoom'));
+const MyBookings = lazy(() => import('@/pages/MyBookings'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const Dashboard = lazy(() => import('@/pages/admin/Dashboard'));
+const ManageRooms = lazy(() => import('@/pages/admin/ManageRooms'));
+const Settings = lazy(() => import('@/pages/admin/Settings'));
+const Issues = lazy(() => import('@/pages/admin/Issues'));
+const RoomDashboard = lazy(() => import('@/pages/RoomDashboard'));
+const FloorPlan = lazy(() => import('@/pages/FloorPlan'));
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -30,7 +31,14 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      }
+    >
+      <Routes>
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" replace />} />
       <Route path="/register" element={!user ? <Register /> : <Navigate to="/" replace />} />
 
@@ -107,6 +115,7 @@ function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   );
 }
 

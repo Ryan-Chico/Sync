@@ -44,3 +44,5 @@ export function BookRoom() {
     </div>
   );
 }
+
+export default BookRoom;

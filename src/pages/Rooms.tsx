@@ -46,3 +46,5 @@ export function Rooms() {
     </div>
   );
 }
+
+export default Rooms;

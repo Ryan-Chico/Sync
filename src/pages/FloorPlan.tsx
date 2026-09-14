@@ -226,3 +226,5 @@ export function FloorPlan() {
     </div>
   );
 }
+
+export default FloorPlan;

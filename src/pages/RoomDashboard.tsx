@@ -265,3 +265,5 @@ export function RoomDashboard() {
     </div>
   );
 }
+
+export default RoomDashboard;
