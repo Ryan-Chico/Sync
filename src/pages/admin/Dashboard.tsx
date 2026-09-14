@@ -1,17 +1,20 @@
 import { Link } from 'react-router-dom';
-import { Building2, Calendar, Users, Settings } from 'lucide-react';
+import { Building2, Calendar, Users, Settings, AlertTriangle } from 'lucide-react';
 import { useRooms } from '@/hooks/useRooms';
 import { useBookings } from '@/hooks/useBookings';
+import { useIssues } from '@/hooks/useIssues';
 import { Spinner } from '@/components/ui/Spinner';
 
 export function Dashboard() {
   const { rooms, loading: roomsLoading } = useRooms();
   const { bookings, loading: bookingsLoading } = useBookings();
+  const { issues, loading: issuesLoading } = useIssues();
 
-  const loading = roomsLoading || bookingsLoading;
+  const loading = roomsLoading || bookingsLoading || issuesLoading;
 
   const activeBookings = bookings.filter((b) => b.status === 'confirmed');
   const totalCapacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
+  const pendingIssues = issues.filter((i) => i.status !== 'fixed');
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -75,6 +78,21 @@ export function Dashboard() {
                 <div>
                   <p className="text-lg font-semibold text-gray-900">Rooms</p>
                   <p className="text-sm text-gray-500">Manage rooms</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              to="/admin/issues"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all hover:border-yellow-200"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-yellow-50 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">{pendingIssues.length}</p>
+                  <p className="text-sm text-gray-500">Pending Issues</p>
                 </div>
               </div>
             </Link>

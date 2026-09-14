@@ -27,6 +27,10 @@ export function ManageRooms() {
     equipment: [] as string[],
     image_url: '',
     is_active: true,
+    floor_plan_x: 0,
+    floor_plan_y: 0,
+    floor_plan_width: 120,
+    floor_plan_height: 80,
   };
 
   const [formData, setFormData] = useState(emptyRoom);
@@ -50,6 +54,10 @@ export function ManageRooms() {
       equipment: room.equipment || [],
       image_url: room.image_url || '',
       is_active: room.is_active,
+      floor_plan_x: room.floor_plan_x || 0,
+      floor_plan_y: room.floor_plan_y || 0,
+      floor_plan_width: room.floor_plan_width || 120,
+      floor_plan_height: room.floor_plan_height || 80,
     });
     setError('');
     setShowModal(true);

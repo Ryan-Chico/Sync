@@ -8,7 +8,7 @@ import { GeneralSettings } from './GeneralSettings';
 
 type Tab = 'users' | 'buildings' | 'equipment' | 'general';
 
-const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+const tabs: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'users', label: 'Users', icon: Users },
   { id: 'buildings', label: 'Buildings', icon: Building2 },
   { id: 'equipment', label: 'Equipment', icon: Wrench },

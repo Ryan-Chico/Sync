@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, LogOut, Menu, X, User } from 'lucide-react';
+import { Building2, LogOut, Menu, X, User, Map } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -12,11 +12,14 @@ export function Navbar() {
   const navLinks = user
     ? [
         { to: '/', label: 'Home' },
+        { to: '/dashboard', label: 'Dashboard' },
+        { to: '/floor-plan', label: 'Floor Plan' },
         { to: '/rooms', label: 'Rooms' },
         { to: '/my-bookings', label: 'My Bookings' },
         ...(isAdmin
           ? [
               { to: '/admin', label: 'Admin' },
+              { to: '/admin/issues', label: 'Issues' },
               { to: '/admin/settings', label: 'Settings' },
             ]
           : []),

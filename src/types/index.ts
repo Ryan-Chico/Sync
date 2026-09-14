@@ -19,6 +19,10 @@ export interface Room {
   equipment: string[];
   image_url: string | null;
   is_active: boolean;
+  floor_plan_x: number;
+  floor_plan_y: number;
+  floor_plan_width: number;
+  floor_plan_height: number;
   created_at: string;
   updated_at: string;
   current_booking?: Booking | null;
@@ -80,6 +84,22 @@ export interface AppSetting {
   value: string;
   description: string | null;
   updated_at: string;
+}
+
+export interface RoomIssue {
+  id: string;
+  room_id: string;
+  reported_by: string;
+  equipment_name: string;
+  description: string | null;
+  status: 'reported' | 'verified' | 'fixed';
+  verified_by: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  room?: Room;
+  reporter?: Profile;
+  verifier?: Profile;
 }
 
 export const BUILDINGS = ['Main Building', 'Science Building', 'Admin Building', 'Library'] as const;

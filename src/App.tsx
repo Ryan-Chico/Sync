@@ -14,6 +14,9 @@ import { Register } from '@/pages/Register';
 import { Dashboard } from '@/pages/admin/Dashboard';
 import { ManageRooms } from '@/pages/admin/ManageRooms';
 import { Settings } from '@/pages/admin/Settings';
+import { Issues } from '@/pages/admin/Issues';
+import { RoomDashboard } from '@/pages/RoomDashboard';
+import { FloorPlan } from '@/pages/FloorPlan';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -53,6 +56,23 @@ function AppRoutes() {
       />
 
       <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <RoomDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/floor-plan"
+        element={
+          <ProtectedRoute>
+            <FloorPlan />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/admin"
         element={
           <ProtectedRoute requireAdmin>
@@ -73,6 +93,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute requireAdmin>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/issues"
+        element={
+          <ProtectedRoute requireAdmin>
+            <Issues />
           </ProtectedRoute>
         }
       />
