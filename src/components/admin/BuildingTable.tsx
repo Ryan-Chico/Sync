@@ -1,0 +1,137 @@
+import { useState } from 'react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useBuildings } from '@/hooks/useAdmin';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
+import { Spinner } from '@/components/ui/Spinner';
+import type { Building } from '@/types';
+
+export function BuildingTable() {
+  const { buildings, loading, createBuilding, updateBuilding, deleteBuilding } = useBuildings();
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Building | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({ name: '', floors: 5, is_active: true });
+
+  function openCreate() {
+    setEditing(null);
+    setFormData({ name: '', floors: 5, is_active: true });
+    setError('');
+    setShowModal(true);
+  }
+
+  function openEdit(building: Building) {
+    setEditing(building);
+    setFormData({ name: building.name, floors: building.floors, is_active: building.is_active });
+    setError('');
+    setShowModal(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      if (editing) {
+        await updateBuilding(editing.id, formData);
+      } else {
+        await createBuilding(formData);
+      }
+      setShowModal(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    await deleteBuilding(id);
+  }
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-gray-500">{buildings.length} buildings</p>
+        <Button onClick={openCreate} size="sm">
+          <Plus className="w-4 h-4 mr-1" /> Add Building
+        </Button>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Floors</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {buildings.map((b) => (
+              <tr key={b.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 font-medium text-gray-900">{b.name}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">{b.floors}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 text-xs rounded-full ${b.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {b.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-right space-x-2">
+                  <button onClick={() => openEdit(b)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(b.id, b.name)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {buildings.length === 0 && <div className="text-center py-8 text-gray-500">No buildings</div>}
+      </div>
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <h2 className="text-lg font-semibold">{editing ? 'Edit Building' : 'Add Building'}</h2>
+          <Input
+            label="Building Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g. Engineering Block"
+            required
+          />
+          <Input
+            label="Number of Floors"
+            type="number"
+            value={formData.floors}
+            onChange={(e) => setFormData({ ...formData, floors: Number(e.target.value) })}
+            min={1}
+            required
+          />
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={formData.is_active}
+              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              className="rounded border-gray-300 text-blue-600"
+            />
+            <label className="text-sm text-gray-700">Active</label>
+          </div>
+          {error && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</div>}
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button>
+            <Button type="submit" disabled={saving} className="flex-1">{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+}
