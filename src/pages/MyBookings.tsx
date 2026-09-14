@@ -15,6 +15,10 @@ export function MyBookings() {
   const activeBookings = bookings.filter((b) => b.status === 'confirmed');
   const pastBookings = bookings.filter((b) => b.status === 'cancelled' || b.status === 'completed');
 
+  async function handleCancelBooking(id: string) {
+    await cancelBooking(id);
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-6">
@@ -40,7 +44,7 @@ export function MyBookings() {
                     key={booking.id}
                     booking={booking}
                     showRoom
-                    onCancel={cancelBooking}
+                    onCancel={handleCancelBooking}
                     onEdit={setEditingBooking}
                   />
                 ))}

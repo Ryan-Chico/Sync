@@ -39,7 +39,7 @@ export function ReportIssueModal({ isOpen, onClose, room }: ReportIssueModalProp
     setError('');
 
     try {
-      await reportIssue(room.id, selectedEquipment, description, user.id);
+      await reportIssue({ roomId: room.id, equipmentName: selectedEquipment, description, reportedBy: user.id });
       setSuccess(true);
       setTimeout(() => {
         onClose();

@@ -1,112 +1,132 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { RoomIssue } from '@/types';
 
 let issueChannelCounter = 0;
-let issueCountChannelCounter = 0;
+
+async function fetchIssues(roomId?: string): Promise<RoomIssue[]> {
+  let query = supabase
+    .from('room_issues')
+    .select('*, room:rooms(*), reporter:profiles!room_issues_reported_by_fkey(*), verifier:profiles!room_issues_verified_by_fkey(*)')
+    .order('created_at', { ascending: false });
+
+  if (roomId) query = query.eq('room_id', roomId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data as RoomIssue[]) || [];
+}
 
 export function useIssues(roomId?: string) {
-  const [issues, setIssues] = useState<RoomIssue[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const channelId = useRef(`issues-realtime-${++issueChannelCounter}`);
 
-  const fetchIssues = useCallback(async () => {
-    setLoading(true);
-    let query = supabase
-      .from('room_issues')
-      .select('*, room:rooms(*), reporter:profiles!room_issues_reported_by_fkey(*), verifier:profiles!room_issues_verified_by_fkey(*)')
-      .order('created_at', { ascending: false });
-
-    if (roomId) query = query.eq('room_id', roomId);
-
-    const { data, error } = await query;
-    if (error) console.error('Error fetching issues:', error);
-    else setIssues((data as RoomIssue[]) || []);
-    setLoading(false);
-  }, [roomId]);
+  const { data: issues = [], isLoading: loading } = useQuery({
+    queryKey: ['issues', roomId],
+    queryFn: () => fetchIssues(roomId),
+  });
 
   useEffect(() => {
-    fetchIssues();
-
     const channel = supabase
       .channel(channelId.current)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_issues' }, fetchIssues)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_issues' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['issues'] });
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchIssues]);
+  }, [queryClient]);
 
-  async function reportIssue(roomId: string, equipmentName: string, description: string, reportedBy: string) {
-    const { error } = await supabase.from('room_issues').insert({
-      room_id: roomId,
-      equipment_name: equipmentName,
-      description,
-      reported_by: reportedBy,
-      status: 'reported',
-    });
-    if (error) throw error;
-    fetchIssues();
-  }
+  const reportIssue = useMutation({
+    mutationFn: async ({ roomId, equipmentName, description, reportedBy }: {
+      roomId: string;
+      equipmentName: string;
+      description: string;
+      reportedBy: string;
+    }) => {
+      const { error } = await supabase.from('room_issues').insert({
+        room_id: roomId,
+        equipment_name: equipmentName,
+        description,
+        reported_by: reportedBy,
+        status: 'reported',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['issues'] }),
+  });
 
-  async function verifyIssue(issueId: string, verifiedBy: string) {
-    const { error } = await supabase
-      .from('room_issues')
-      .update({ status: 'verified', verified_by: verifiedBy, updated_at: new Date().toISOString() })
-      .eq('id', issueId);
-    if (error) throw error;
-    fetchIssues();
-  }
+  const verifyIssue = useMutation({
+    mutationFn: async ({ issueId, verifiedBy }: { issueId: string; verifiedBy: string }) => {
+      const { error } = await supabase
+        .from('room_issues')
+        .update({ status: 'verified', verified_by: verifiedBy, updated_at: new Date().toISOString() })
+        .eq('id', issueId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['issues'] }),
+  });
 
-  async function fixIssue(issueId: string) {
-    const { error } = await supabase
-      .from('room_issues')
-      .update({ status: 'fixed', updated_at: new Date().toISOString() })
-      .eq('id', issueId);
-    if (error) throw error;
-    fetchIssues();
-  }
+  const fixIssue = useMutation({
+    mutationFn: async (issueId: string) => {
+      const { error } = await supabase
+        .from('room_issues')
+        .update({ status: 'fixed', updated_at: new Date().toISOString() })
+        .eq('id', issueId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['issues'] }),
+  });
 
-  return { issues, loading, reportIssue, verifyIssue, fixIssue, refetch: fetchIssues };
+  return {
+    issues,
+    loading,
+    reportIssue: reportIssue.mutateAsync,
+    verifyIssue: verifyIssue.mutateAsync,
+    fixIssue: fixIssue.mutateAsync,
+    refetch: () => queryClient.invalidateQueries({ queryKey: ['issues'] }),
+  };
+}
+
+async function fetchRoomIssueCounts(): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from('room_issues')
+    .select('room_id')
+    .in('status', ['reported', 'verified']);
+
+  if (error) throw error;
+
+  const counts: Record<string, number> = {};
+  (data as { room_id: string }[]).forEach((item) => {
+    counts[item.room_id] = (counts[item.room_id] || 0) + 1;
+  });
+  return counts;
 }
 
 export function useRoomIssuesStatus() {
-  const [roomIssueCounts, setRoomIssueCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
-  const channelId = useRef(`issues-count-realtime-${++issueCountChannelCounter}`);
+  const queryClient = useQueryClient();
+  const channelId = useRef(`issues-count-realtime-${++issueChannelCounter}`);
 
-  const fetchIssueCounts = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('room_issues')
-      .select('room_id')
-      .in('status', ['reported', 'verified']);
-
-    if (error) {
-      console.error('Error fetching issue counts:', error);
-    } else {
-      const counts: Record<string, number> = {};
-      (data as { room_id: string }[]).forEach((item) => {
-        counts[item.room_id] = (counts[item.room_id] || 0) + 1;
-      });
-      setRoomIssueCounts(counts);
-    }
-    setLoading(false);
-  }, []);
+  const { data: roomIssueCounts = {}, isLoading: loading } = useQuery({
+    queryKey: ['room-issue-counts'],
+    queryFn: fetchRoomIssueCounts,
+  });
 
   useEffect(() => {
-    fetchIssueCounts();
-
     const channel = supabase
       .channel(channelId.current)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_issues' }, fetchIssueCounts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_issues' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['room-issue-counts'] });
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchIssueCounts]);
+  }, [queryClient]);
 
-  return { roomIssueCounts, loading, refetch: fetchIssueCounts };
+  return { roomIssueCounts, loading, refetch: () => queryClient.invalidateQueries({ queryKey: ['room-issue-counts'] }) };
 }

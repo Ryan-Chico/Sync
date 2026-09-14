@@ -23,6 +23,10 @@ export function RoomDetail() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
 
+  async function handleCancelBooking(id: string) {
+    await cancelBooking(id);
+  }
+
   if (roomLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -126,7 +130,7 @@ export function RoomDetail() {
                 showUser
                 onCancel={
                   user && (booking.user_id === user.id || isAdmin)
-                    ? cancelBooking
+                    ? handleCancelBooking
                     : undefined
                 }
                 onEdit={

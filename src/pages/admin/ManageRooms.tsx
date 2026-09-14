@@ -70,7 +70,7 @@ export function ManageRooms() {
 
     try {
       if (editingRoom) {
-        await updateRoom(editingRoom.id, formData);
+        await updateRoom({ id: editingRoom.id, ...formData });
       } else {
         await createRoom(formData);
       }

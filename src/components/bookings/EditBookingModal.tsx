@@ -56,7 +56,8 @@ export function EditBookingModal({ booking, isOpen, onClose }: EditBookingModalP
         throw new Error('End time must be after start time');
       }
 
-      await updateBooking(booking.id, {
+      await updateBooking({
+        id: booking.id,
         title: formData.title,
         description: formData.description || null,
         start_time: start.toISOString(),

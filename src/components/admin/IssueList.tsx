@@ -13,7 +13,7 @@ export function IssueList() {
   async function handleVerify(issueId: string) {
     if (!user) return;
     try {
-      await verifyIssue(issueId, user.id);
+      await verifyIssue({ issueId, verifiedBy: user.id });
     } catch (err) {
       console.error('Failed to verify:', err);
     }
