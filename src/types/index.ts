@@ -69,6 +69,11 @@ export interface Building {
   floors: number;
   is_active: boolean;
   created_at: string;
+  wing_width?: number;
+  wing_depth?: number;
+  side_width?: number;
+  side_depth?: number;
+  floor_height?: number;
 }
 
 export interface Equipment {

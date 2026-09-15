@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Text, PerspectiveCamera, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
-import type { Room } from '@/types';
+import type { Room, Building } from '@/types';
 
 interface Building3DViewProps {
   rooms: (Room & { hasIssues?: boolean })[];
@@ -10,6 +10,7 @@ interface Building3DViewProps {
   selectedFloor: number;
   onFloorChange: (floor: number) => void;
   onRoomClick: (room: Room) => void;
+  building?: Building | null;
 }
 
 interface FloorProps {
@@ -19,28 +20,19 @@ interface FloorProps {
   isBelowSelected: boolean;
   floorY: number;
   onRoomClick: (room: Room) => void;
+  wingWidth: number;
+  wingDepth: number;
+  sideWidth: number;
+  sideDepth: number;
+  floorHeight: number;
 }
 
-const MAIN_WING = { width: 6, depth: 4 };
-const SIDE_WING = { width: 2.5, depth: 3 };
-const FLOOR_HEIGHT = 0.1;
-const ROOM_HEIGHT = 0.8;
-const PILLAR_SIZE = 0.12;
-
-// Positions for main wing (centered at origin)
-const MAIN = {
-  left: -MAIN_WING.width / 2,
-  right: MAIN_WING.width / 2,
-  front: -MAIN_WING.depth / 2,
-  back: MAIN_WING.depth / 2,
-};
-
-// Positions for side wing (attached to left-back of main wing)
-const SIDE = {
-  left: -MAIN_WING.width / 2 - SIDE_WING.width / 2,
-  right: -MAIN_WING.width / 2 + SIDE_WING.width / 2,
-  front: MAIN_WING.depth / 2,
-  back: MAIN_WING.depth / 2 + SIDE_WING.depth,
+const DEFAULTS = {
+  wing_width: 6,
+  wing_depth: 4,
+  side_width: 2.5,
+  side_depth: 3,
+  floor_height: 0.1,
 };
 
 function Room3D({ room, position, size, onClick }: {
@@ -88,10 +80,24 @@ function Room3D({ room, position, size, onClick }: {
   );
 }
 
-function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick }: FloorProps) {
+function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick, wingWidth, wingDepth, sideWidth, sideDepth, floorHeight }: FloorProps) {
   const sortedRooms = useMemo(() => {
     return [...rooms].sort((a, b) => a.room_number.localeCompare(b.room_number));
   }, [rooms]);
+
+  const mainWing = useMemo(() => ({
+    left: -wingWidth / 2,
+    right: wingWidth / 2,
+    front: -wingDepth / 2,
+    back: wingDepth / 2,
+  }), [wingWidth, wingDepth]);
+
+  const sideWing = useMemo(() => ({
+    left: -wingWidth / 2 - sideWidth / 2,
+    right: -wingWidth / 2 + sideWidth / 2,
+    front: wingDepth / 2,
+    back: wingDepth / 2 + sideDepth,
+  }), [wingWidth, wingDepth, sideWidth, sideDepth]);
 
   const mainWingRooms = useMemo(() => {
     const halfIndex = Math.ceil(sortedRooms.length * 0.6);
@@ -119,11 +125,13 @@ function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick 
     return { cols: 1, rows: Math.ceil(count) };
   }, [sideWingRooms]);
 
+  const roomHeight = 0.8;
+  const pillarSize = 0.12;
+
   return (
     <group position={[0, floorY, 0]}>
-      {/* Main wing floor slab */}
       <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[MAIN_WING.width, FLOOR_HEIGHT, MAIN_WING.depth]} />
+        <boxGeometry args={[wingWidth, floorHeight, wingDepth]} />
         <meshStandardMaterial
           color={isSelected ? '#3b82f6' : '#6b7280'}
           transparent
@@ -132,9 +140,8 @@ function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick 
         />
       </mesh>
 
-      {/* Side wing floor slab */}
-      <mesh position={[(SIDE.left + SIDE.right) / 2, 0, (SIDE.front + SIDE.back) / 2]}>
-        <boxGeometry args={[SIDE_WING.width, FLOOR_HEIGHT, SIDE_WING.depth]} />
+      <mesh position={[(sideWing.left + sideWing.right) / 2, 0, (sideWing.front + sideWing.back) / 2]}>
+        <boxGeometry args={[sideWidth, floorHeight, sideDepth]} />
         <meshStandardMaterial
           color={isSelected ? '#3b82f6' : '#6b7280'}
           transparent
@@ -143,65 +150,60 @@ function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick 
         />
       </mesh>
 
-      {/* Rooms in main wing */}
       {mainWingRooms.map((room, index) => {
         const { cols } = mainLayout;
         const col = index % cols;
         const row = Math.floor(index / cols);
 
-        const roomWidth = (MAIN_WING.width - 1) / Math.max(cols, 1) - 0.15;
-        const roomDepth = (MAIN_WING.depth - 1) / Math.max(mainLayout.rows, 1) - 0.15;
+        const roomWidth = (wingWidth - 1) / Math.max(cols, 1) - 0.15;
+        const roomDepth = (wingDepth - 1) / Math.max(mainLayout.rows, 1) - 0.15;
 
-        const x = -MAIN_WING.width / 2 + 0.5 + (col + 0.5) * ((MAIN_WING.width - 1) / cols);
-        const z = -MAIN_WING.depth / 2 + 0.5 + (row + 0.5) * ((MAIN_WING.depth - 1) / mainLayout.rows);
-        const y = FLOOR_HEIGHT / 2 + ROOM_HEIGHT / 2;
+        const x = -wingWidth / 2 + 0.5 + (col + 0.5) * ((wingWidth - 1) / cols);
+        const z = -wingDepth / 2 + 0.5 + (row + 0.5) * ((wingDepth - 1) / mainLayout.rows);
+        const y = floorHeight / 2 + roomHeight / 2;
 
         return (
           <Room3D
             key={room.id}
             room={room}
             position={[x, y, z]}
-            size={[roomWidth, ROOM_HEIGHT, roomDepth]}
+            size={[roomWidth, roomHeight, roomDepth]}
             onClick={() => onRoomClick(room)}
           />
         );
       })}
 
-      {/* Rooms in side wing */}
       {sideWingRooms.map((room, index) => {
         const row = index;
 
-        const roomWidth = SIDE_WING.width - 0.5;
-        const roomDepth = (SIDE_WING.depth - 0.5) / Math.max(sideLayout.rows, 1) - 0.1;
+        const roomWidth = sideWidth - 0.5;
+        const roomDepth = (sideDepth - 0.5) / Math.max(sideLayout.rows, 1) - 0.1;
 
-        const x = (SIDE.left + SIDE.right) / 2;
-        const z = SIDE.front + 0.25 + (row + 0.5) * ((SIDE_WING.depth - 0.5) / sideLayout.rows);
-        const y = FLOOR_HEIGHT / 2 + ROOM_HEIGHT / 2;
+        const x = (sideWing.left + sideWing.right) / 2;
+        const z = sideWing.front + 0.25 + (row + 0.5) * ((sideDepth - 0.5) / sideLayout.rows);
+        const y = floorHeight / 2 + roomHeight / 2;
 
         return (
           <Room3D
             key={room.id}
             room={room}
             position={[x, y, z]}
-            size={[roomWidth, ROOM_HEIGHT, roomDepth]}
+            size={[roomWidth, roomHeight, roomDepth]}
             onClick={() => onRoomClick(room)}
           />
         );
       })}
 
-      {/* Pillars at all corners */}
       {[
-        // Main wing corners
-        [MAIN.left, MAIN.front],
-        [MAIN.right, MAIN.front],
-        [MAIN.right, MAIN.back],
-        // Side wing corners
-        [SIDE.left, SIDE.front],
-        [SIDE.left, SIDE.back],
-        [SIDE.right, SIDE.back],
+        [mainWing.left, mainWing.front],
+        [mainWing.right, mainWing.front],
+        [mainWing.right, mainWing.back],
+        [sideWing.left, sideWing.front],
+        [sideWing.left, sideWing.back],
+        [sideWing.right, sideWing.back],
       ].map(([x, z], i) => (
-        <mesh key={`pillar-${i}`} position={[x, 0.75 + FLOOR_HEIGHT / 2, z]}>
-          <boxGeometry args={[PILLAR_SIZE, 1.5, PILLAR_SIZE]} />
+        <mesh key={`pillar-${i}`} position={[x, 0.75 + floorHeight / 2, z]}>
+          <boxGeometry args={[pillarSize, 1.5, pillarSize]} />
           <meshStandardMaterial color="#4b5563" transparent opacity={0.9} />
         </mesh>
       ))}
@@ -209,8 +211,28 @@ function Floor({ rooms, floor, isSelected, isBelowSelected, floorY, onRoomClick 
   );
 }
 
-export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, onRoomClick }: Building3DViewProps) {
-  const floorSpacing = 1.8;
+export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, onRoomClick, building }: Building3DViewProps) {
+  const wingWidth = building?.wing_width ?? DEFAULTS.wing_width;
+  const wingDepth = building?.wing_depth ?? DEFAULTS.wing_depth;
+  const sideWidth = building?.side_width ?? DEFAULTS.side_width;
+  const sideDepth = building?.side_depth ?? DEFAULTS.side_depth;
+  const floorHeight = building?.floor_height ?? DEFAULTS.floor_height;
+
+  const floorSpacing = floorHeight * 18;
+
+  const mainWing = useMemo(() => ({
+    left: -wingWidth / 2,
+    right: wingWidth / 2,
+    front: -wingDepth / 2,
+    back: wingDepth / 2,
+  }), [wingWidth, wingDepth]);
+
+  const sideWing = useMemo(() => ({
+    left: -wingWidth / 2 - sideWidth / 2,
+    right: -wingWidth / 2 + sideWidth / 2,
+    front: wingDepth / 2,
+    back: wingDepth / 2 + sideDepth,
+  }), [wingWidth, wingDepth, sideWidth, sideDepth]);
 
   const roomsByFloor = useMemo(() => {
     const map: Record<number, Room[]> = {};
@@ -221,15 +243,16 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
   }, [rooms, floors]);
 
   const buildingHeight = floors * floorSpacing;
+  const cameraDistance = Math.max(12, buildingHeight * 0.8);
 
   return (
     <div className="relative bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ height: '600px' }}>
       <Canvas shadows style={{ width: '100%', height: '100%' }}>
-        <PerspectiveCamera makeDefault position={[12, 8, 12]} fov={40} />
+        <PerspectiveCamera makeDefault position={[cameraDistance, cameraDistance * 0.7, cameraDistance]} fov={40} />
         <OrbitControls
           target={[0, buildingHeight / 2, 1.5]}
           minDistance={5}
-          maxDistance={30}
+          maxDistance={60}
           enablePan={true}
           enableZoom={true}
           enableRotate={true}
@@ -241,7 +264,7 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
         <pointLight position={[-5, 10, -5]} intensity={0.3} />
 
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-          <planeGeometry args={[30, 30]} />
+          <planeGeometry args={[60, 60]} />
           <meshStandardMaterial color="#1f2937" />
         </mesh>
 
@@ -259,25 +282,28 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
               isBelowSelected={isBelowSelected}
               floorY={floor * floorSpacing}
               onRoomClick={onRoomClick}
+              wingWidth={wingWidth}
+              wingDepth={wingDepth}
+              sideWidth={sideWidth}
+              sideDepth={sideDepth}
+              floorHeight={floorHeight}
             />
           );
         })}
 
-        {/* Building outline for selected floor */}
         {(() => {
           const floorY = selectedFloor * floorSpacing;
           const outlineHeight = 1.6;
 
-          // Create L-shape outline points
           const points = [
-            new THREE.Vector3(MAIN.left, floorY + outlineHeight / 2, MAIN.front),
-            new THREE.Vector3(MAIN.right, floorY + outlineHeight / 2, MAIN.front),
-            new THREE.Vector3(MAIN.right, floorY + outlineHeight / 2, MAIN.back),
-            new THREE.Vector3(SIDE.right, floorY + outlineHeight / 2, SIDE.front),
-            new THREE.Vector3(SIDE.right, floorY + outlineHeight / 2, SIDE.back),
-            new THREE.Vector3(SIDE.left, floorY + outlineHeight / 2, SIDE.back),
-            new THREE.Vector3(SIDE.left, floorY + outlineHeight / 2, SIDE.front),
-            new THREE.Vector3(MAIN.left, floorY + outlineHeight / 2, MAIN.front),
+            new THREE.Vector3(mainWing.left, floorY + outlineHeight / 2, mainWing.front),
+            new THREE.Vector3(mainWing.right, floorY + outlineHeight / 2, mainWing.front),
+            new THREE.Vector3(mainWing.right, floorY + outlineHeight / 2, mainWing.back),
+            new THREE.Vector3(sideWing.right, floorY + outlineHeight / 2, sideWing.front),
+            new THREE.Vector3(sideWing.right, floorY + outlineHeight / 2, sideWing.back),
+            new THREE.Vector3(sideWing.left, floorY + outlineHeight / 2, sideWing.back),
+            new THREE.Vector3(sideWing.left, floorY + outlineHeight / 2, sideWing.front),
+            new THREE.Vector3(mainWing.left, floorY + outlineHeight / 2, mainWing.front),
           ];
 
           const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -289,7 +315,6 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
           );
         })()}
 
-        {/* Floor number labels */}
         {Array.from({ length: floors }, (_, i) => {
           const floor = i + 1;
           const floorY = floor * floorSpacing;
@@ -298,7 +323,7 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
           return (
             <Billboard
               key={`label-${floor}`}
-              position={[MAIN.left - 1, floorY + 0.75, 0]}
+              position={[mainWing.left - 1, floorY + 0.75, 0]}
             >
               <Text
                 fontSize={0.3}
@@ -313,7 +338,6 @@ export function Building3DView({ rooms, floors, selectedFloor, onFloorChange, on
         })}
       </Canvas>
 
-      {/* Floor selector overlay */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-3 shadow-lg border border-gray-200">
         {Array.from({ length: floors }, (_, i) => {
           const floor = floors - i;

@@ -90,10 +90,13 @@ export function useFloorPlan() {
     return building?.floors || 5;
   }
 
+  const selectedBuildingObj = buildings.find((b) => b.name === selectedBuilding) || null;
+
   return {
     buildings,
     selectedBuilding,
     setSelectedBuilding,
+    selectedBuildingObj,
     selectedFloor,
     setSelectedFloor,
     rooms,

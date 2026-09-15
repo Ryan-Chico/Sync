@@ -18,6 +18,7 @@ export function FloorPlan() {
     buildings,
     selectedBuilding,
     setSelectedBuilding,
+    selectedBuildingObj,
     selectedFloor,
     setSelectedFloor,
     rooms,
@@ -116,6 +117,7 @@ export function FloorPlan() {
             selectedFloor={selectedFloor}
             onFloorChange={setSelectedFloor}
             onRoomClick={handleRoomClick}
+            building={selectedBuildingObj}
           />
         ) : (
           <FloorPlanView
