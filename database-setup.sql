@@ -191,6 +191,44 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Automatically create a profile row for every new auth user.
+-- Without this, signups have no profiles row, so profile lookups return
+-- nothing and anything referencing profiles(id) (e.g. bookings) fails.
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO profiles (id, full_name, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    'staff'
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'on_auth_user_created') THEN
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+  END IF;
+END $$;
+
+-- Backfill profiles for accounts created before the trigger existed
+INSERT INTO profiles (id, full_name, role)
+SELECT
+  u.id,
+  COALESCE(u.raw_user_meta_data->>'full_name', ''),
+  'staff'
+FROM auth.users u
+WHERE NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = u.id);
+
 -- Create trigger to prevent booking conflicts
 CREATE OR REPLACE FUNCTION check_booking_conflict()
 RETURNS TRIGGER AS $$

@@ -24,15 +24,21 @@ export function useFloorPlan() {
 
     if (error) console.error('Error fetching buildings:', error);
     else {
-      setBuildings((data as Building[]) || []);
-      if (data && data.length > 0 && !selectedBuilding) {
-        setSelectedBuilding(data[0].name);
-      }
+      const activeBuildings = (data as Building[]) || [];
+      setBuildings(activeBuildings);
+      // Default to the first building without making this callback depend on
+      // the current selection (which caused an extra fetch on every change).
+      setSelectedBuilding((prev) => prev || activeBuildings[0]?.name || '');
     }
-  }, [selectedBuilding]);
+  }, []);
 
   const fetchRooms = useCallback(async () => {
-    if (!selectedBuilding) return;
+    if (!selectedBuilding) {
+      // No buildings yet: stop the spinner instead of loading forever.
+      setRooms([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     const { data, error } = await supabase

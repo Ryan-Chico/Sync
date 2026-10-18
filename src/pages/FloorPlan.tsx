@@ -110,7 +110,18 @@ export function FloorPlan() {
             <Spinner size="lg" />
           </div>
         )}
-        {viewMode === '3d' ? (
+        {!loading && buildings.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
+            <p className="font-medium text-gray-900">No buildings yet</p>
+            <p className="mt-1 text-sm text-gray-600">
+              The <code className="text-gray-800">buildings</code> and{' '}
+              <code className="text-gray-800">rooms</code> tables are empty. Run{' '}
+              <code className="text-gray-800">add-building-dimensions.sql</code>, then{' '}
+              <code className="text-gray-800">sti-calooocan-seed.sql</code>, in the Supabase SQL
+              Editor to load sample data.
+            </p>
+          </div>
+        ) : viewMode === '3d' ? (
           <Building3DView
             rooms={rooms}
             floors={floorCount}

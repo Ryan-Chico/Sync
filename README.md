@@ -119,5 +119,9 @@ New accounts default to the `staff` role; admin-only pages (e.g. `/admin`) requi
 
 - **Blank page or Supabase errors after cloning** — make sure `.env` exists with both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then restart the dev server (Vite only reads env vars at startup).
 - **"relation does not exist" errors** — the database schema hasn't been applied. Run `database-setup.sql` in the Supabase SQL Editor.
+- **"Error fetching profile" / `PGRST116` in the console** — the schema was applied before the `handle_new_user` trigger existed, so existing accounts have no `profiles` row. Re-run `database-setup.sql` (it is safe to re-run) to install the trigger and backfill missing profiles.
+- **Floor plan / rooms pages are empty** — the sample data was never loaded. Run `add-building-dimensions.sql`, then `sti-calooocan-seed.sql` (and optionally `sample-floor-plan-data.sql`) in the Supabase SQL Editor.
+- **"email rate limit exceeded" on signup** — the built-in Supabase email service is heavily throttled and only delivers to your organization's members. Turn off **Confirm email** under Authentication → Sign In / Providers → Email while developing, or configure a custom SMTP provider.
+- **"Email address ... is invalid" on signup** — Supabase rejects test/example domains and Gmail addresses with fewer than 6 characters before the `@`. Use a real address.
 - **Can't access `/admin`** — your account still has the `staff` role. Use the SQL snippet in step 5 above.
 - **Port 3000 already in use** — stop the process using it, or change `server.port` in `vite.config.ts` and the `--port` flag in `package.json`.

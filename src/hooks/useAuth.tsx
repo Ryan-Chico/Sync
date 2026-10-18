@@ -46,8 +46,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function fetchProfile(userId: string) {
     if (fetchedUserId.current === userId) return;
     fetchedUserId.current = userId;
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (error) console.error('Error fetching profile:', error);
+    // maybeSingle() so a user without a profile row resolves to null instead of
+    // throwing PGRST116 ("Cannot coerce the result to a single JSON object").
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) {
+      console.error('Error fetching profile:', error);
+    } else if (!data) {
+      console.warn(
+        `[auth] No profile row for user ${userId}. Run the profile trigger SQL (see database-setup.sql) so new signups get a profiles row.`
+      );
+    }
     setProfile(data);
     setLoading(false);
   }
